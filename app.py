@@ -869,6 +869,8 @@ center = [marker_points["lat"].mean(), marker_points["lon"].mean()]
 # ── режим гексов ────────────────────────────────────────────────────────────
 grid, series, unit, hex_extra, points_layer = None, None, "", None, None
 pt_cells = {}
+legend = None
+extra_aliases = None
 
 if hex_mode:
     if not city_query:
@@ -916,7 +918,6 @@ if hex_mode:
     legend = [("Больницы", "#d62728"), ("Клиники и медцентры", "#2ca02c"),
               ("Врачебные кабинеты", "#ff7f0e")] if map_type.startswith("5.") \
         else None
-    extra_aliases = None
     if map_type.startswith("3."):
         extra_aliases = {"c_people": "Жилой фонд: ", "c_retail": "Розница/общепит: ",
                          "c_biz": "Банки/офисы: ", "c_transit": "Остановки: ",
