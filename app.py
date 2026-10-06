@@ -17,12 +17,14 @@ OSM Point & Hex Analytics — Streamlit app
 Запуск:  streamlit run app.py
 """
 
+import json
 import time
 
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-import requests
+import urllib.parse
+import urllib.request
 import streamlit as st
 import folium
 from folium.plugins import MarkerCluster
@@ -122,13 +124,14 @@ def geocode_one(query: str):
 # --------------------------------------------------------------------------- #
 @st.cache_data(show_spinner=False, ttl=30 * 24 * 3600)
 def get_city_polygon(city_query: str):
-    r = requests.get(
-        "https://nominatim.openstreetmap.org/search",
-        params={"q": city_query, "format": "jsonv2", "polygon_geojson": 1,
-                "limit": 1, "accept-language": "ru"},
-        headers={"User-Agent": NOMINATIM_USER_AGENT}, timeout=30)
-    r.raise_for_status()
-    data = r.json()
+    params = urllib.parse.urlencode(
+        {"q": city_query, "format": "jsonv2", "polygon_geojson": 1,
+         "limit": 1, "accept-language": "ru"})
+    req = urllib.request.Request(
+        f"https://nominatim.openstreetmap.org/search?{params}",
+        headers={"User-Agent": NOMINATIM_USER_AGENT})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        data = json.loads(r.read().decode("utf-8"))
     if not data:
         return None
     geom = shape(data[0]["geojson"])
