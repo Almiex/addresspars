@@ -237,8 +237,10 @@ def build_map(points: pd.DataFrame, hex_df: pd.DataFrame | None,
               center, zoom: int):
     fmap = folium.Map(location=center, zoom_start=zoom,
                       tiles="OpenStreetMap", control_scale=True)
-    folium.TileLayer("CartoDB positron", name="Светлая").add_to(fmap)
-    folium.TileLayer("CartoDB dark_matter", name="Тёмная").add_to(fmap)
+    # CARTO basemaps (positron/dark_matter) больше недоступны без API-ключа
+    # (https://carto.com/basemaps/apikey) — используем тайлы без ключа.
+    folium.TileLayer("OpenTopoMap", name="Топографическая",
+                     show=False).add_to(fmap)
 
     if show_points and not points.empty:
         cluster = MarkerCluster(name="Точки").add_to(fmap)
