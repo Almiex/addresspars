@@ -1021,7 +1021,7 @@ class HexTooltip(folium.GeoJsonTooltip):
 # --------------------------------------------------------------------------- #
 def render_map(center, grid, series, unit, map_type, marker_points=None,
                points=None, hex_extra=None, extra_aliases=None, legend=None,
-               source=None, yzoom=15, npoints=None):
+               source=None, npoints=None):
     # prefer_canvas: векторы рисуются на canvas — сотни тысяч полигонов без лагов
     m = folium.Map(location=center, tiles="OpenStreetMap", control_scale=True,
                    prefer_canvas=True)
@@ -1045,11 +1045,20 @@ def render_map(center, grid, series, unit, map_type, marker_points=None,
     if marker_points is not None and not marker_points.empty:
         cluster = MarkerCluster(name="Адреса").add_to(m)
         for _, row in marker_points.iterrows():
+            _lat, _lon = row["lat"], row["lon"]
+            _addr = str(row.get("label", ""))[:300]
+            _html = (f"<div style='font-size:13px; max-width:260px;'>"
+                     f"<b>{_addr}</b><br><br>"
+                     f"<a href='https://yandex.ru/maps/?pt={_lon:.6f},{_lat:.6f}"
+                     f"&z=17&l=map' target='_blank' rel='noopener' "
+                     f"style='display:inline-block; padding:6px 12px; "
+                     f"background:#ffcc00; color:#000; text-decoration:none; "
+                     f"border-radius:6px; font-weight:600;'>"
+                     f"Открыть в Яндекс.Картах</a></div>")
             folium.Marker(
-                location=[row["lat"], row["lon"]],
-                tooltip=str(row.get("label", ""))[:150],
-                popup=folium.Popup(str(row.get("label", ""))[:400],
-                                   max_width=320),
+                location=[_lat, _lon],
+                tooltip=_addr[:150],
+                popup=folium.Popup(_html, max_width=300),
                 icon=folium.Icon(color="blue", icon="glyphicon-map-marker"),
             ).add_to(cluster)
 
@@ -1093,11 +1102,6 @@ def render_map(center, grid, series, unit, map_type, marker_points=None,
                      "n": int((npoints or {}).get(cell, 0))}  # точек из файла
             if source:
                 props["src"] = source
-            # бабл гекса: ссылка на Яндекс.Карты по его центру
-            _lat, _lon = h3.cell_to_latlng(cell)
-            props["link"] = (f'<a href="https://yandex.ru/maps/?pt={_lon:.6f},{_lat:.6f}'
-                             f'&z={yzoom}&l=map" target="_blank" rel="noopener">'
-                             f'🗺 Открыть в Яндекс.Картах</a>')
             # доп. поля обязаны быть у КАЖДОГО гекса, иначе folium падает на тултипе
             for c in extra_cols:
                 props[safe_cols[c]] = float(hex_extra.loc[cell, c]) \
@@ -1129,8 +1133,6 @@ def render_map(center, grid, series, unit, map_type, marker_points=None,
                 fields=["v", "n"] + [safe_cols[c] for c in extra_cols] + src_fields,
                 aliases=aliases, localize=True,
             ),
-            popup=folium.GeoJsonPopup(fields=["link"], aliases=[""], labels=False,
-                                      localize=False, max_width=280),
             name="Гексы",
         ).add_to(m)
 
@@ -1621,7 +1623,6 @@ if map_type.startswith("1."):
 render_map(center, grid, series, unit, map_type, marker_points=marker_points,
            points=points, hex_extra=hex_extra, extra_aliases=extra_aliases,
            legend=legend, source=_src,
-           yzoom={7: 13, 8: 15, 9: 16, 10: 17}.get(res_eff, 15),
            npoints=pt_cells)
 
 if map_type.startswith("1.") and kontur_df is None:
