@@ -1054,7 +1054,12 @@ def render_map(center, grid, series, unit, map_type, marker_points=None,
                      f"style='display:inline-block; padding:6px 12px; "
                      f"background:#ffcc00; color:#000; text-decoration:none; "
                      f"border-radius:6px; font-weight:600;'>"
-                     f"Открыть в Яндекс.Картах</a></div>")
+                     f"Открыть в Яндекс.Картах</a><br><br>"
+                     f"<label style='display:flex; align-items:center; gap:6px; "
+                     f"cursor:pointer; user-select:none;'>"
+                     f"<input type='checkbox' class='radius-toggle' "
+                     f"data-lat='{_lat:.7f}' data-lon='{_lon:.7f}'> "
+                     f"отображать радиус (1 / 2 / 5 км)</label></div>")
             folium.Marker(
                 location=[_lat, _lon],
                 tooltip=_addr[:150],
@@ -1177,6 +1182,45 @@ def render_map(center, grid, series, unit, map_type, marker_points=None,
                                           localize=False),
             name="Объекты",
         ).add_to(m)
+
+    # круги 1/2/5 км по флажку «отображать радиус» в попапе метки.
+    # Чисто клиентский механизм: переключение чекбокса НЕ вызывает rerun
+    # Streamlit — круги рисуются/снимаются на лету. Слушатель на document
+    # (делегирование): попапы MarkerCluster живут в DOM карты. Круги
+    # interactive=False — не перехватывают мышь, тултипы гексов под ними
+    # работают, клик по линии круга попадает в объект под ней.
+    if marker_points is not None and not marker_points.empty:
+        from branca.element import MacroElement, Template
+        _radius_js = MacroElement()
+        _radius_js._template = Template("""
+{% macro script(this, kwargs) %}
+(function() {
+  var m = {{ this._parent.get_name() }};
+  var radiusLayer = L.layerGroup().addTo(m);
+  var circlesByKey = {};
+  document.addEventListener('change', function(e) {
+    var t = e.target;
+    if (!t.classList || !t.classList.contains('radius-toggle')) return;
+    var lat = parseFloat(t.getAttribute('data-lat'));
+    var lon = parseFloat(t.getAttribute('data-lon'));
+    var key = lat + ',' + lon;
+    if (circlesByKey[key]) {           // снять предыдущие круги этой точки
+      circlesByKey[key].forEach(function(c) { radiusLayer.removeLayer(c); });
+      delete circlesByKey[key];
+    }
+    if (t.checked) {
+      // синий — 1 км, зелёный — 2 км, красный — 5 км
+      circlesByKey[key] = [[1000, '#1f6fd6'], [2000, '#2ca02c'], [5000, '#d62728']]
+        .map(function(d) {
+          return L.circle([lat, lon], {radius: d[0], color: d[1], weight: 2.5,
+            dashArray: '8 6', fill: false, interactive: false}).addTo(radiusLayer);
+        });
+    }
+  });
+})();
+{% endmacro %}
+""")
+        m.add_child(_radius_js)
 
     # границы: сетка гексов, иначе точки
     lats, lngs = [], []
