@@ -1,0 +1,11 @@
+streamlit>=1.32
+pandas>=2.0
+numpy>=1.24
+folium>=0.15
+streamlit-folium>=0.18
+geopy>=2.4
+h3>=4.1
+osmnx>=2.0
+geopandas>=1.0
+shapely>=2.0
+openpyxl>=3.1
